@@ -83,14 +83,7 @@ public class Writer {
                 new ThreadPoolExecutor.CallerRunsPolicy());
 
         // Read in sample data
-        InputStream input = getClass().getResourceAsStream("/foobar.html");
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] buff = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = input.read(buff)) != -1)
-            output.write(buff, 0, bytesRead);
-
-        this.value = ByteBuffer.wrap(output.toByteArray());
+        this.value = bytes(getClass().getResourceAsStream("/foobar.html"));
     }
 
     public void execute() throws InterruptedException {
@@ -134,4 +127,12 @@ public class Writer {
         return String.format("key_%d", sequence);
     }
 
+    static ByteBuffer bytes(InputStream input) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buff = new byte[1024];
+        int length;
+        while ((length = input.read(buff)) != -1)
+            output.write(buff, 0, length);
+        return ByteBuffer.wrap(output.toByteArray());
+    }
 }
