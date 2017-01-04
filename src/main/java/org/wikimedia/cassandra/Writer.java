@@ -40,6 +40,7 @@ public class Writer {
     private final int numRevisions;
     private final int revisionStart;
     private final int numRenders;
+    private final int queueSize;
     private final PreparedStatement prepared;
     private final ByteBuffer value;
     private final ExecutorService executor;
@@ -62,10 +63,13 @@ public class Writer {
         this.numRevisions = numRevisions;
         this.revisionStart = revOffset;
         this.numRenders = numRenders;
-        this.prepared = session.prepare(QUERY);
 
-        // FIXME: Concurrency, (and queue size?) should be configurable
-        final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>(5000);
+        this.queueSize = this.concurrency * 2;
+        this.prepared = session.prepare(QUERY);
+        this.attempts = metrics.meter(name(Writer.class, "inserts", "attempted"));
+        this.failures = metrics.meter(name(Writer.class, "inserts", "failed"));
+
+        final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>(this.queueSize);
 
         metrics.register(name(Writer.class, "inserts", "enqueued"), new Gauge<Integer>() {
             @Override

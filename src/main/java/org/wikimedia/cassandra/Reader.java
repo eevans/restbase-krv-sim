@@ -32,6 +32,7 @@ public class Reader {
     private final int concurrency;
     private final int numPartitions;
     private final int partitionStart;
+    private final int queueSize;
     private final PreparedStatement prepared;
     private final ExecutorService executor;
     private final Meter attempts;
@@ -42,13 +43,13 @@ public class Reader {
         this.session = checkNotNull(session);
         this.numPartitions = numPartitions;
         this.partitionStart = partOffset;
-        this.prepared = session.prepare(QUERY);
 
+        this.queueSize = this.concurrency * 2;
+        this.prepared = session.prepare(QUERY);
         this.attempts = metrics.meter(name(Writer.class, "selects", "attempted"));
         this.failures = metrics.meter(name(Writer.class, "selects", "failed"));
 
-        // FIXME: Concurrency, (and queue size?) should be configurable
-        final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>(5000);
+        final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>(this.concurrency * 2);
 
         metrics.register(name(Writer.class, "selects", "enqueued"), new Gauge<Integer>() {
             @Override
