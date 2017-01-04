@@ -34,6 +34,7 @@ public class Writer {
     private static final Logger LOG = LoggerFactory.getLogger(Writer.class);
 
     private final CassandraSession session;
+    private final int concurrency;
     private final int numPartitions;
     private final int partitionStart;
     private final int numRevisions;
@@ -48,12 +49,14 @@ public class Writer {
     public Writer(
             MetricRegistry metrics,
             CassandraSession session,
+            int concurrency,
             int numPartitions,
             int partOffset,
             int numRevisions,
             int revOffset,
             int numRenders) throws IOException {
         this.session = checkNotNull(session);
+        this.concurrency = concurrency;
         this.numPartitions = numPartitions;
         this.partitionStart = partOffset;
         this.numRevisions = numRevisions;
@@ -71,10 +74,13 @@ public class Writer {
             }
         });
 
-        this.executor = new ThreadPoolExecutor(7, 7, 30, TimeUnit.SECONDS, queue, new ThreadPoolExecutor.CallerRunsPolicy());
-
-        this.attempts = metrics.meter(name(Writer.class, "inserts", "attempted"));
-        this.failures = metrics.meter(name(Writer.class, "inserts", "failed"));
+        this.executor = new ThreadPoolExecutor(
+                this.concurrency,
+                this.concurrency,
+                30,
+                TimeUnit.SECONDS,
+                queue,
+                new ThreadPoolExecutor.CallerRunsPolicy());
 
         // Read in sample data
         InputStream input = getClass().getResourceAsStream("/foobar.html");

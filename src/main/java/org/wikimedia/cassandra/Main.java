@@ -56,6 +56,8 @@ public class Main {
         private int revOffset = 0;
         @Option(name = "--num-renders", description = "Number of renders (sub-revisions) to write (default: 10)")
         private int numRenders = 10;
+        @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
+        private int concurrency = 10;
 
         @Override
         public void run() {
@@ -67,6 +69,7 @@ public class Main {
                 new Writer(
                         metrics,
                         session,
+                        this.concurrency,
                         this.numPartitions,
                         this.partOffset,
                         this.numRevisions,
@@ -85,6 +88,8 @@ public class Main {
         private int numPartitions = 1000;
         @Option(name = { "-po", "--partition-offset" }, description = "Partition offset to start from (default: 0)")
         private int partOffset = 0;
+        @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
+        private int concurrency = 10;
 
         @Override
         public void run() {
@@ -93,7 +98,7 @@ public class Main {
             }
 
             try (CassandraSession session = new CassandraSession(this.contact())) {
-                new Reader(metrics, session, this.numPartitions, this.partOffset).execute();
+                new Reader(metrics, session, this.concurrency, this.numPartitions, this.partOffset).execute();
             }
             catch (Exception e) {
                 throw Throwables.propagate(e);

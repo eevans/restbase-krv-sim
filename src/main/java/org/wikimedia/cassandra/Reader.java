@@ -29,6 +29,7 @@ public class Reader {
     private static final Logger LOG = LoggerFactory.getLogger(Reader.class);
 
     private final CassandraSession session;
+    private final int concurrency;
     private final int numPartitions;
     private final int partitionStart;
     private final PreparedStatement prepared;
@@ -36,7 +37,8 @@ public class Reader {
     private final Meter attempts;
     private final Meter failures;
 
-    public Reader(MetricRegistry metrics, CassandraSession session, int numPartitions, int partOffset) {
+    public Reader(MetricRegistry metrics, CassandraSession session, int concurrency, int numPartitions, int partOffset) {
+        this.concurrency = concurrency;
         this.session = checkNotNull(session);
         this.numPartitions = numPartitions;
         this.partitionStart = partOffset;
@@ -56,8 +58,8 @@ public class Reader {
         });
 
         this.executor = new ThreadPoolExecutor(
-                10,
-                10,
+                this.concurrency,
+                this.concurrency,
                 30,
                 TimeUnit.SECONDS,
                 queue,
