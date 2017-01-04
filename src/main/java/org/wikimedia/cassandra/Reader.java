@@ -67,9 +67,9 @@ public class Reader {
                 new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
-    public void execute() throws InterruptedException {
-        for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
-            final String key = Writer.keyName(k);
+    public void execute() {
+        for (int i = this.partitionStart; i < (this.numPartitions + this.partitionStart); i++) {
+            final String key = Writer.keyName(i);
             executor.submit(() -> {
                 Statement statement = null;
                 try {
@@ -90,10 +90,14 @@ public class Reader {
         LOG.info("All inserts enqueued; Shutting down...");
         executor.shutdown();
 
-        // This timeout needs to be long enough to accommodate the number of enqueued requests (relates to the
-        // size of the blocking queue backing the thread-pool).
-        if (!executor.awaitTermination(120, TimeUnit.SECONDS)) {
-            LOG.error("Timed out waiting for executor shutdown!");
+        try {
+            // Block until any jobs on the queue have completed, or the timeout has expired.
+            if (!executor.awaitTermination(Math.max(this.queueSize, 180), TimeUnit.SECONDS)) {
+                LOG.warn("Timed out waiting for executor shutdown!");
+            }
+        }
+        catch (InterruptedException e) {
+            LOG.warn("Interrupted while waiting for executor shutdown", e);
         }
 
     }

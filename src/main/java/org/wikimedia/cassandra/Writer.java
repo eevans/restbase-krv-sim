@@ -90,7 +90,7 @@ public class Writer {
         this.value = bytes(getClass().getResourceAsStream("/foobar.html"));
     }
 
-    public void execute() throws InterruptedException {
+    public void execute() {
         for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
             for (int j = 0; j < this.numRenders; j++) {
                 for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
@@ -119,11 +119,14 @@ public class Writer {
         LOG.info("All inserts enqueued; Shutting down...");
         executor.shutdown();
 
-        // This timeout needs to be long enough to accommodate the number of enqueued requests (relates to the
-        // size of the blocking queue backing the thread-pool).
-
-        if (!executor.awaitTermination(120, TimeUnit.SECONDS)) {
-            LOG.error("Timed out waiting for executor shutdown!");
+        try {
+            // Block until any jobs on the queue have completed, or the timeout has expired.
+            if (!executor.awaitTermination(Math.max(this.queueSize, 180), TimeUnit.SECONDS)) {
+                LOG.warn("Timed out waiting for executor shutdown!");
+            }
+        }
+        catch (InterruptedException e) {
+            LOG.warn("Interrupted while waiting for executor shutdown", e);
         }
     }
 
