@@ -87,7 +87,7 @@ public class Reader {
                 }
             });
         }
-        LOG.info("All inserts enqueued; Shutting down...");
+        LOG.info("All jobs enqueued; Shutting down...");
         executor.shutdown();
 
         try {
