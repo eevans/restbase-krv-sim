@@ -54,10 +54,10 @@ public class Main {
         private int numRevisions = 10000;
         @Option(name = { "-ro", "--revision-offset" }, description = "Revision offset to start from (default: 0)")
         private int revOffset = 0;
-        @Option(name = "--num-renders", description = "Number of renders (sub-revisions) to write (default: 10)")
-        private int numRenders = 10;
         @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
         private int concurrency = 10;
+        @Option(name = "--runs", description = "Number of runs to execute")
+        private int runs = 1;
 
         @Override
         public void run() {
@@ -74,7 +74,7 @@ public class Main {
                         this.partOffset,
                         this.numRevisions,
                         this.revOffset,
-                        this.numRenders).execute();
+                        this.runs).execute();
             }
             catch (Exception e) {
                 throw Throwables.propagate(e);

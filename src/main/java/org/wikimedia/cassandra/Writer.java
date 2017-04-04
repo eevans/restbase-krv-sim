@@ -30,7 +30,7 @@ import com.github.rvesse.airline.annotations.Command;
 @Command(name = "write", description = "Write data")
 public class Writer {
     private static final String QUERY = String
-            .format("INSERT INTO %s.%s (key,rev,tid,value) VALUES (?,?,now(),?) USING TTL ?", KEYSPACE, TABLE);
+            .format("INSERT INTO %s.%s (key,rev,tid,value) VALUES (?,?,now(),?)", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(Writer.class);
 
     private final CassandraSession session;
@@ -39,13 +39,14 @@ public class Writer {
     private final int partitionStart;
     private final int numRevisions;
     private final int revisionStart;
-    private final int numRenders;
+    private final int numRuns;
     private final int queueSize;
     private final PreparedStatement prepared;
     private final ByteBuffer value;
     private final ExecutorService executor;
     private final Meter attempts;
     private final Meter failures;
+    private int runCount;
 
     public Writer(
             MetricRegistry metrics,
@@ -55,26 +56,33 @@ public class Writer {
             int partOffset,
             int numRevisions,
             int revOffset,
-            int numRenders) throws IOException {
+            int numRuns) throws IOException {
         this.session = checkNotNull(session);
         this.concurrency = concurrency;
         this.numPartitions = numPartitions;
         this.partitionStart = partOffset;
         this.numRevisions = numRevisions;
         this.revisionStart = revOffset;
-        this.numRenders = numRenders;
+        this.numRuns = numRuns;
 
         this.queueSize = this.concurrency * 2;
         this.prepared = session.prepare(QUERY);
-        this.attempts = metrics.meter(name(Writer.class, "inserts", "attempted"));
-        this.failures = metrics.meter(name(Writer.class, "inserts", "failed"));
+        this.attempts = metrics.meter(name(Writer.class, "all"));
+        this.failures = metrics.meter(name(Writer.class, "failed"));
 
         final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>(this.queueSize);
 
-        metrics.register(name(Writer.class, "inserts", "enqueued"), new Gauge<Integer>() {
+        metrics.register(name(Writer.class, "enqueued"), new Gauge<Integer>() {
             @Override
             public Integer getValue() {
                 return queue.size();
+            }
+        });
+
+        metrics.register(name(Writer.class, "runs"), new Gauge<Integer>() {
+            @Override
+            public Integer getValue() {
+                return runCount;
             }
         });
 
@@ -91,16 +99,15 @@ public class Writer {
     }
 
     public void execute() {
-        for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
-            for (int j = 0; j < this.numRenders; j++) {
+        for (int i = 0; i < this.numRuns; i++) {
+            for (int j = this.revisionStart; j < (this.numRevisions + this.revisionStart); j++) {
                 for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
                     final String key = keyName(k);
-                    final int rev = i;
-                    final int ttl = j < (this.numRenders - 1) ? 60 : 0; // FIXME: maybe not hard-code TTL?
+                    final int rev = j;
                     executor.submit(() -> {
                         Statement statement = null;
                         try {
-                            statement = this.prepared.bind(key, rev, value, ttl);
+                            statement = this.prepared.bind(key, rev, value);
                             this.session.execute(statement);
                             this.attempts.mark();
                         }
@@ -115,6 +122,7 @@ public class Writer {
                     });
                 }
             }
+            this.runCount++;
         }
         LOG.info("All inserts enqueued; Shutting down...");
         executor.shutdown();

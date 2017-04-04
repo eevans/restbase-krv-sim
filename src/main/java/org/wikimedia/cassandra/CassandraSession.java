@@ -7,7 +7,7 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 
 public class CassandraSession implements AutoCloseable {
-    public static final String KEYSPACE = "krv_simulation";
+    public static final String KEYSPACE = "krv";
     public static final String TABLE = "data";
 
     private final Cluster cluster;
