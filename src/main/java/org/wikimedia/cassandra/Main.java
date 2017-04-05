@@ -24,7 +24,7 @@ import com.google.common.base.Throwables;
 @Cli(
         name = "krv-simulator",
         defaultCommand = Main.Help.class,
-        commands = { Main.Write.class, Main.Read.class, Main.Help.class })
+        commands = { Main.Write.class, Main.AltWrite.class, Main.Read.class, Main.Help.class })
 public class Main {
 
     abstract static class Cmd implements Runnable {
@@ -67,6 +67,46 @@ public class Main {
 
             try (CassandraSession session = new CassandraSession(this.contact())) {
                 new Writer(
+                        metrics,
+                        session,
+                        this.concurrency,
+                        this.numPartitions,
+                        this.partOffset,
+                        this.numRevisions,
+                        this.revOffset,
+                        this.runs).execute();
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    }
+
+    @Command(name = "alt-write", description = "Write new revisions")
+    public static class AltWrite extends Cmd {
+        @Option(name = { "-np", "--num-partitions" }, description = "Number of partitions to write (default: 1000)")
+        private int numPartitions = 1000;
+        @Option(name = { "-po", "--partition-offset" }, description = "Partition offset to start from (default: 0)")
+        private int partOffset = 0;
+        @Option(
+                name = { "-nr", "--num-revisions" },
+                description = "Number of revisions to write per-partition (default: 10000)")
+        private int numRevisions = 10000;
+        @Option(name = { "-ro", "--revision-offset" }, description = "Revision offset to start from (default: 0)")
+        private int revOffset = 0;
+        @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
+        private int concurrency = 10;
+        @Option(name = "--runs", description = "Number of runs to execute")
+        private int runs = 1;
+
+        @Override
+        public void run() {
+            if (this.help.showHelpIfRequested()) {
+                return;
+            }
+
+            try (CassandraSession session = new CassandraSession(this.contact())) {
+                new AltWriter(
                         metrics,
                         session,
                         this.concurrency,

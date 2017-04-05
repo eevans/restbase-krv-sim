@@ -33,20 +33,19 @@ public class Writer {
             .format("INSERT INTO %s.%s (key,rev,tid,value) VALUES (?,?,now(),?)", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(Writer.class);
 
-    private final CassandraSession session;
-    private final int concurrency;
-    private final int numPartitions;
-    private final int partitionStart;
-    private final int numRevisions;
-    private final int revisionStart;
-    private final int numRuns;
-    private final int queueSize;
-    private final PreparedStatement prepared;
-    private final ByteBuffer value;
-    private final ExecutorService executor;
-    private final Meter attempts;
-    private final Meter failures;
-    private int runCount;
+    protected final CassandraSession session;
+    protected final int concurrency;
+    protected final int numPartitions;
+    protected final int partitionStart;
+    protected final int numRevisions;
+    protected final int revisionStart;
+    protected final int numRuns;
+    protected final int queueSize;
+    protected final ByteBuffer value;
+    protected final ExecutorService executor;
+    protected final Meter attempts;
+    protected final Meter failures;
+    protected int runCount;
 
     public Writer(
             MetricRegistry metrics,
@@ -66,7 +65,6 @@ public class Writer {
         this.numRuns = numRuns;
 
         this.queueSize = this.concurrency * 2;
-        this.prepared = session.prepare(QUERY);
         this.attempts = metrics.meter(name(Writer.class, "all"));
         this.failures = metrics.meter(name(Writer.class, "failed"));
 
@@ -99,6 +97,8 @@ public class Writer {
     }
 
     public void execute() {
+        PreparedStatement prepared = this.session.prepare(QUERY);
+        
         for (int i = 0; i < this.numRuns; i++) {
             for (int j = this.revisionStart; j < (this.numRevisions + this.revisionStart); j++) {
                 for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
@@ -107,7 +107,7 @@ public class Writer {
                     executor.submit(() -> {
                         Statement statement = null;
                         try {
-                            statement = this.prepared.bind(key, rev, value);
+                            statement = prepared.bind(key, rev, value);
                             this.session.execute(statement);
                             this.attempts.mark();
                         }
