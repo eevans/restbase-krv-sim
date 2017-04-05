@@ -33,33 +33,37 @@ public class AltWriter extends Writer {
             int partOffset,
             int numRevisions,
             int revOffset,
+            int numRenders,
             int numRuns) throws IOException {
-        super(metrics, session, concurrency, numPartitions, partOffset, numRevisions, revOffset, numRuns);
+        super(metrics, session, concurrency, numPartitions, partOffset, numRevisions, revOffset, numRenders, numRuns);
     }
 
     public void execute() {
         PreparedStatement prepared = this.session.prepare(QUERY);
-        for (int i = 0; i < this.numRuns; i++) {
-            for (int j = this.revisionStart; j < (this.numRevisions + this.revisionStart); j++) {
-                for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
-                    final String key = keyName(k);
-                    final int rev = j;
-                    executor.submit(() -> {
-                        Statement statement = null;
-                        try {
-                            statement = prepared.bind(key, valueFor(rev));
-                            this.session.execute(statement);
-                            this.attempts.mark();
-                        }
-                        catch (NoHostAvailableException | QueryExecutionException e) {
-                            LOG.warn(e.getMessage());
-                            this.failures.mark();
-                        }
-                        catch (Exception e) {
-                            LOG.error("Unable to execute statement: \"{}\"", statement, e);
-                            this.failures.mark();
-                        }
-                    });
+
+        for (int run = 0; run < this.numRuns; run++) {
+            for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
+                for (int j = 0; j < this.numRenders; j++) {
+                    for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
+                        final String key = keyName(k);
+                        final int rev = i;
+                        executor.submit(() -> {
+                            Statement statement = null;
+                            try {
+                                statement = prepared.bind(key, valueFor(rev));
+                                this.session.execute(statement);
+                                this.attempts.mark();
+                            }
+                            catch (NoHostAvailableException | QueryExecutionException e) {
+                                LOG.warn(e.getMessage());
+                                this.failures.mark();
+                            }
+                            catch (Exception e) {
+                                LOG.error("Unable to execute statement: \"{}\"", statement, e);
+                                this.failures.mark();
+                            }
+                        });
+                    }
                 }
             }
             this.runCount++;

@@ -54,6 +54,8 @@ public class Main {
         private int numRevisions = 10000;
         @Option(name = { "-ro", "--revision-offset" }, description = "Revision offset to start from (default: 0)")
         private int revOffset = 0;
+        @Option(name = {"--num-renders"}, description = "Number of revisions (overwrites)")
+        private int numRenders = 1;
         @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
         private int concurrency = 10;
         @Option(name = "--runs", description = "Number of runs to execute")
@@ -74,6 +76,7 @@ public class Main {
                         this.partOffset,
                         this.numRevisions,
                         this.revOffset,
+                        this.numRenders,
                         this.runs).execute();
             }
             catch (Exception e) {
@@ -94,6 +97,8 @@ public class Main {
         private int numRevisions = 10000;
         @Option(name = { "-ro", "--revision-offset" }, description = "Revision offset to start from (default: 0)")
         private int revOffset = 0;
+        @Option(name = {"--num-renders"}, description = "Number of revisions (overwrites)")
+        private int numRenders = 1;
         @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
         private int concurrency = 10;
         @Option(name = "--runs", description = "Number of runs to execute")
@@ -114,6 +119,7 @@ public class Main {
                         this.partOffset,
                         this.numRevisions,
                         this.revOffset,
+                        this.numRenders,
                         this.runs).execute();
             }
             catch (Exception e) {

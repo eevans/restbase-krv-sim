@@ -39,6 +39,7 @@ public class Writer {
     protected final int partitionStart;
     protected final int numRevisions;
     protected final int revisionStart;
+    protected final int numRenders;
     protected final int numRuns;
     protected final int queueSize;
     protected final ByteBuffer value;
@@ -55,6 +56,7 @@ public class Writer {
             int partOffset,
             int numRevisions,
             int revOffset,
+            int numRenders,
             int numRuns) throws IOException {
         this.session = checkNotNull(session);
         this.concurrency = concurrency;
@@ -62,6 +64,7 @@ public class Writer {
         this.partitionStart = partOffset;
         this.numRevisions = numRevisions;
         this.revisionStart = revOffset;
+        this.numRenders = numRenders;
         this.numRuns = numRuns;
 
         this.queueSize = this.concurrency * 2;
@@ -98,28 +101,30 @@ public class Writer {
 
     public void execute() {
         PreparedStatement prepared = this.session.prepare(QUERY);
-        
-        for (int i = 0; i < this.numRuns; i++) {
-            for (int j = this.revisionStart; j < (this.numRevisions + this.revisionStart); j++) {
-                for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
-                    final String key = keyName(k);
-                    final int rev = j;
-                    executor.submit(() -> {
-                        Statement statement = null;
-                        try {
-                            statement = prepared.bind(key, rev, value);
-                            this.session.execute(statement);
-                            this.attempts.mark();
-                        }
-                        catch (NoHostAvailableException | QueryExecutionException e) {
-                            LOG.warn(e.getMessage());
-                            this.failures.mark();
-                        }
-                        catch (Exception e) {
-                            LOG.error("Unable to execute statement: \"{}\"", statement, e);
-                            this.failures.mark();
-                        }
-                    });
+
+        for (int run = 0; run < this.numRuns; run++) {
+            for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
+                for (int j = 0; j < this.numRevisions; j++) {
+                    for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
+                        final String key = keyName(k);
+                        final int rev = i;
+                        executor.submit(() -> {
+                            Statement statement = null;
+                            try {
+                                statement = prepared.bind(key, rev, value);
+                                this.session.execute(statement);
+                                this.attempts.mark();
+                            }
+                            catch (NoHostAvailableException | QueryExecutionException e) {
+                                LOG.warn(e.getMessage());
+                                this.failures.mark();
+                            }
+                            catch (Exception e) {
+                                LOG.error("Unable to execute statement: \"{}\"", statement, e);
+                                this.failures.mark();
+                            }
+                        });
+                    }
                 }
             }
             this.runCount++;
