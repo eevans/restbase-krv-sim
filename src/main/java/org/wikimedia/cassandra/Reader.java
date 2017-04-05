@@ -33,12 +33,13 @@ public class Reader {
     protected final int concurrency;
     protected final int numPartitions;
     protected final int partitionStart;
-    protected final int numRevisions;
-    protected final int revisionStart;
+    protected final int numRuns;
     protected final int queueSize;
     protected final ExecutorService executor;
     protected final Meter failures;
     protected final Timer reads;
+
+    protected int runCount;
 
     public Reader(
             MetricRegistry metrics,
@@ -46,14 +47,12 @@ public class Reader {
             int concurrency,
             int numPartitions,
             int partOffset,
-            int numRevisions,
-            int revOffset) {
+            int numRuns) {
         this.concurrency = concurrency;
         this.session = checkNotNull(session);
         this.numPartitions = numPartitions;
         this.partitionStart = partOffset;
-        this.numRevisions = numRevisions;
-        this.revisionStart = revOffset;
+        this.numRuns = numRuns;
 
         this.queueSize = this.concurrency * 2;
         this.failures = metrics.meter(name(Reader.class, "failed"));
@@ -65,6 +64,13 @@ public class Reader {
             @Override
             public Integer getValue() {
                 return queue.size();
+            }
+        });
+
+        metrics.register(name(Reader.class, "runs"), new Gauge<Integer>() {
+            @Override
+            public Integer getValue() {
+                return runCount;
             }
         });
 
@@ -80,15 +86,14 @@ public class Reader {
     public void execute() {
         PreparedStatement prepared = this.session.prepare(QUERY);
 
-        for (int i = this.partitionStart; i < (this.numPartitions + this.partitionStart); i++) {
-            for (int j = this.revisionStart; j < (this.numRevisions + this.revisionStart); j++) {
-                final String key = Writer.keyName(i);
-                final int rev = j;
+        for (int i = 0; i < this.numRuns; i++) {
+            for (int j = this.partitionStart; j < (this.numPartitions + this.partitionStart); j++) {
+                final String key = Writer.keyName(j);
                 final Timer.Context context = this.reads.time();
                 executor.submit(() -> {
                     Statement statement = null;
                     try {
-                        statement = prepared.bind(key, rev);
+                        statement = prepared.bind(key);
                         this.session.execute(statement);
                     }
                     catch (NoHostAvailableException | QueryExecutionException e) {
@@ -104,6 +109,7 @@ public class Reader {
                     }
                 });
             }
+            this.runCount++;
         }
         LOG.info("All jobs enqueued; Shutting down...");
         executor.shutdown();

@@ -134,14 +134,10 @@ public class Main {
         private int numPartitions = 1000;
         @Option(name = { "-po", "--partition-offset" }, description = "Partition offset to start from (default: 0)")
         private int partOffset = 0;
-        @Option(
-                name = { "-nr", "--num-revisions" },
-                description = "Number of revisions to write per-partition (default: 10000)")
-        private int numRevisions = 10000;
-        @Option(name = { "-ro", "--revision-offset" }, description = "Revision offset to start from (default: 0)")
-        private int revOffset = 0;
         @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
         private int concurrency = 10;
+        @Option(name = "--runs", description = "Number of runs to execute")
+        private int runs = 1;
 
         @Override
         public void run() {
@@ -156,8 +152,7 @@ public class Main {
                         this.concurrency,
                         this.numPartitions,
                         this.partOffset,
-                        this.numRevisions,
-                        this.revOffset).execute();
+                        this.runs).execute();
             }
             catch (Exception e) {
                 throw Throwables.propagate(e);
@@ -173,6 +168,8 @@ public class Main {
         private int partOffset = 0;
         @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
         private int concurrency = 10;
+        @Option(name = "--runs", description = "Number of runs to execute")
+        private int runs = 1;
 
         @Override
         public void run() {
@@ -181,7 +178,8 @@ public class Main {
             }
 
             try (CassandraSession session = new CassandraSession(this.contact())) {
-                new AltReader(metrics, session, this.concurrency, this.numPartitions, this.partOffset).execute();
+                new AltReader(metrics, session, this.concurrency, this.numPartitions, this.partOffset, this.runs)
+                        .execute();
             }
             catch (Exception e) {
                 throw Throwables.propagate(e);

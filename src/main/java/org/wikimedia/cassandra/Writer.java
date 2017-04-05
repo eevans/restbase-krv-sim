@@ -104,7 +104,7 @@ public class Writer {
 
         for (int run = 0; run < this.numRuns; run++) {
             for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
-                for (int j = 0; j < this.numRevisions; j++) {
+                for (int j = 0; j < this.numRenders; j++) {
                     for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
                         final String key = keyName(k);
                         final int rev = i;

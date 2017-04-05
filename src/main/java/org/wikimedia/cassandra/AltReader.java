@@ -28,34 +28,38 @@ public class AltReader extends Reader {
             CassandraSession session,
             int concurrency,
             int numPartitions,
-            int partOffset) {
-        super(metrics, session, concurrency, numPartitions, partOffset, -1, -1);
+            int partOffset,
+            int numRuns) {
+        super(metrics, session, concurrency, numPartitions, partOffset, numRuns);
     }
 
     public void execute() {
         PreparedStatement prepared = this.session.prepare(QUERY);
 
-        for (int i = this.partitionStart; i < (this.numPartitions + this.partitionStart); i++) {
-            final String key = Writer.keyName(i);
-            final Timer.Context context = this.reads.time();
-            executor.submit(() -> {
-                Statement statement = null;
-                try {
-                    statement = prepared.bind(key);
-                    this.session.execute(statement);
-                }
-                catch (NoHostAvailableException | QueryExecutionException e) {
-                    LOG.warn(e.getMessage());
-                    this.failures.mark();
-                }
-                catch (Exception e) {
-                    LOG.error("Unable to execute statement: \"{}\"", statement, e);
-                    this.failures.mark();
-                }
-                finally {
-                    context.stop();
-                }
-            });
+        for (int i = 0; i < this.numRuns; i++) {
+            for (int j = this.partitionStart; j < (this.numPartitions + this.partitionStart); j++) {
+                final String key = Writer.keyName(j);
+                final Timer.Context context = this.reads.time();
+                executor.submit(() -> {
+                    Statement statement = null;
+                    try {
+                        statement = prepared.bind(key);
+                        this.session.execute(statement);
+                    }
+                    catch (NoHostAvailableException | QueryExecutionException e) {
+                        LOG.warn(e.getMessage());
+                        this.failures.mark();
+                    }
+                    catch (Exception e) {
+                        LOG.error("Unable to execute statement: \"{}\"", statement, e);
+                        this.failures.mark();
+                    }
+                    finally {
+                        context.stop();
+                    }
+                });
+            }
+            this.runCount++;
         }
         LOG.info("All jobs enqueued; Shutting down...");
         executor.shutdown();
