@@ -26,20 +26,19 @@ import com.github.rvesse.airline.annotations.Command;
 
 @Command(name = "read", description = "Read data")
 public class Reader {
-    private static final String QUERY = String.format("SELECT rev,tid,value FROM %s.%s WHERE key=? AND rev=?", KEYSPACE, TABLE);
+    private static final String QUERY = String.format("SELECT rev,tid,value FROM %s.%s WHERE key=? LIMIT 1", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(Reader.class);
 
-    private final CassandraSession session;
-    private final int concurrency;
-    private final int numPartitions;
-    private final int partitionStart;
-    private final int numRevisions;
-    private final int revisionStart;
-    private final int queueSize;
-    private final PreparedStatement prepared;
-    private final ExecutorService executor;
-    private final Meter failures;
-    private final Timer reads;
+    protected final CassandraSession session;
+    protected final int concurrency;
+    protected final int numPartitions;
+    protected final int partitionStart;
+    protected final int numRevisions;
+    protected final int revisionStart;
+    protected final int queueSize;
+    protected final ExecutorService executor;
+    protected final Meter failures;
+    protected final Timer reads;
 
     public Reader(
             MetricRegistry metrics,
@@ -57,7 +56,6 @@ public class Reader {
         this.revisionStart = revOffset;
 
         this.queueSize = this.concurrency * 2;
-        this.prepared = session.prepare(QUERY);
         this.failures = metrics.meter(name(Reader.class, "failed"));
         this.reads = metrics.timer(name(Reader.class, "reads"));
 
@@ -80,6 +78,8 @@ public class Reader {
     }
 
     public void execute() {
+        PreparedStatement prepared = this.session.prepare(QUERY);
+
         for (int i = this.partitionStart; i < (this.numPartitions + this.partitionStart); i++) {
             for (int j = this.revisionStart; j < (this.numRevisions + this.revisionStart); j++) {
                 final String key = Writer.keyName(i);
@@ -88,7 +88,7 @@ public class Reader {
                 executor.submit(() -> {
                     Statement statement = null;
                     try {
-                        statement = this.prepared.bind(key, rev);
+                        statement = prepared.bind(key, rev);
                         this.session.execute(statement);
                     }
                     catch (NoHostAvailableException | QueryExecutionException e) {

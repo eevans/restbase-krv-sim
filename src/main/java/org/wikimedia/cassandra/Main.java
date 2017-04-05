@@ -24,7 +24,7 @@ import com.google.common.base.Throwables;
 @Cli(
         name = "krv-simulator",
         defaultCommand = Main.Help.class,
-        commands = { Main.Write.class, Main.AltWrite.class, Main.Read.class, Main.Help.class })
+        commands = { Main.Write.class, Main.AltWrite.class, Main.Read.class, Main.AltRead.class, Main.Help.class })
 public class Main {
 
     abstract static class Cmd implements Runnable {
@@ -163,7 +163,30 @@ public class Main {
                 throw Throwables.propagate(e);
             }
         }
+    }
 
+    @Command(name = "alt-read", description = "Read previously written revisions")
+    public static class AltRead extends Cmd {
+        @Option(name = { "-np", "--num-partitions" }, description = "Number of partitions to read (default: 1000)")
+        private int numPartitions = 1000;
+        @Option(name = { "-po", "--partition-offset" }, description = "Partition offset to start from (default: 0)")
+        private int partOffset = 0;
+        @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
+        private int concurrency = 10;
+
+        @Override
+        public void run() {
+            if (this.help.showHelpIfRequested()) {
+                return;
+            }
+
+            try (CassandraSession session = new CassandraSession(this.contact())) {
+                new AltReader(metrics, session, this.concurrency, this.numPartitions, this.partOffset).execute();
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
     }
 
     @Command(name = "help")

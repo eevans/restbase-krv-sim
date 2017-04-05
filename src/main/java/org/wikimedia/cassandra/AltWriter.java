@@ -20,7 +20,8 @@ import com.github.rvesse.airline.annotations.Command;
 
 @Command(name = "alt-write", description = "Write data")
 public class AltWriter extends Writer {
-    private static final String KEYSPACE = "alt_write";
+    static final String KEYSPACE = "alt_write";
+
     private static final String QUERY = String
             .format("INSERT INTO %s.%s (key,value) VALUES (?,?) USING TIMESTAMP 1", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(AltWriter.class);
