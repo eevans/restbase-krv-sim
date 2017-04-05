@@ -24,7 +24,7 @@ import com.google.common.base.Throwables;
 @Cli(
         name = "krv-simulator",
         defaultCommand = Main.Help.class,
-        commands = { Main.Write.class, Main.AltWrite.class, Main.Read.class, Main.AltRead.class, Main.Help.class })
+        commands = { Main.Write.class, Main.AltWrite.class, Main.Read.class, Main.AltRead.class, Main.Schema.class, Main.Help.class })
 public class Main {
 
     abstract static class Cmd implements Runnable {
@@ -187,6 +187,20 @@ public class Main {
         }
     }
 
+    @Command(name = "schema", description = "Output schema as CQL DDL")
+    public static class Schema implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                System.out.println(new org.wikimedia.cassandra.Schema().get());
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+    }
+    
     @Command(name = "help")
     public static class Help implements Runnable {
         @Inject

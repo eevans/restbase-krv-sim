@@ -51,7 +51,7 @@ public class AltWriterTest {
     
     @Before
     public void setUp() throws IOException {
-        this.html = Writer.bytes(getClass().getResourceAsStream("/foobar.html"));
+        this.html = ByteBuffer.wrap(Util.bytes(getClass().getResourceAsStream("/foobar.html")));
         CRC32 crcObj = new CRC32();
         crcObj.update(this.html);
         this.checksum = crcObj.getValue();

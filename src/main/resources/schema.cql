@@ -4,7 +4,7 @@
 CREATE KEYSPACE IF NOT EXISTS krv
 WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': 3 };
 
-CREATE TABLE krv.data (
+CREATE TABLE IF NOT EXISTS krv.data (
   key text,
   rev int,
   tid timeuuid,
@@ -13,4 +13,9 @@ CREATE TABLE krv.data (
 WITH CLUSTERING ORDER BY (rev DESC)
   AND compression = { 'chunk_length_kb': '256', 'sstable_compression': 'org.apache.cassandra.io.compress.DeflateCompressor' }
   AND gc_grace_seconds = 300;
-  /* AND compaction = {} */
+
+CREATE TABLE IF NOT EXISTS krv.alt_data (
+  key text PRIMARY KEY,
+  value blob)
+WITH compression = { 'chunk_length_kb': '256', 'sstable_compression': 'org.apache.cassandra.io.compress.DeflateCompressor' }
+  AND gc_grace_seconds = 300;

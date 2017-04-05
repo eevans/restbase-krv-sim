@@ -1,7 +1,7 @@
 package org.wikimedia.cassandra;
 
-import static org.wikimedia.cassandra.AltWriter.KEYSPACE;
-import static org.wikimedia.cassandra.CassandraSession.TABLE;
+import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
+import static org.wikimedia.cassandra.AltWriter.TABLE;
 
 import java.util.concurrent.TimeUnit;
 

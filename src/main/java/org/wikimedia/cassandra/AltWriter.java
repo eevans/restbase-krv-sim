@@ -1,6 +1,6 @@
 package org.wikimedia.cassandra;
 
-import static org.wikimedia.cassandra.CassandraSession.TABLE;
+import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -20,7 +20,7 @@ import com.github.rvesse.airline.annotations.Command;
 
 @Command(name = "alt-write", description = "Write data")
 public class AltWriter extends Writer {
-    static final String KEYSPACE = "alt_write";
+    static final String TABLE = "alt_data";
 
     private static final String QUERY = String
             .format("INSERT INTO %s.%s (key,value) VALUES (?,?) USING TIMESTAMP 1", KEYSPACE, TABLE);

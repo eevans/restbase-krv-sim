@@ -5,9 +5,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
 import static org.wikimedia.cassandra.CassandraSession.TABLE;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -96,7 +94,7 @@ public class Writer {
                 new ThreadPoolExecutor.CallerRunsPolicy());
 
         // Read in sample data
-        this.value = bytes(getClass().getResourceAsStream("/foobar.html"));
+        this.value = ByteBuffer.wrap(Util.bytes(getClass().getResourceAsStream("/foobar.html")));
     }
 
     public void execute() {
@@ -147,12 +145,4 @@ public class Writer {
         return String.format("key_%d", sequence);
     }
 
-    static ByteBuffer bytes(InputStream input) throws IOException {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        byte[] buff = new byte[1024];
-        int length;
-        while ((length = input.read(buff)) != -1)
-            output.write(buff, 0, length);
-        return ByteBuffer.wrap(output.toByteArray());
-    }
 }
