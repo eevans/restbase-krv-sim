@@ -9,7 +9,7 @@ Build
 
 Setup
 -----
-    $ cqlsh -f src/main/resources/schema.cql
+    $ java -jar target/restbase-krv-sim-{version}-full.jar schema | cqlsh
 
 Run
 ---

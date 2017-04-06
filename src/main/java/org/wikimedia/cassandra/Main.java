@@ -1,7 +1,9 @@
 package org.wikimedia.cassandra;
 
 import static com.codahale.metrics.MetricRegistry.name;
+import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import org.ini4j.Ini;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
@@ -34,11 +37,36 @@ public class Main {
         @Option(name = { "--port" }, description = "Cassandra port (default: 9042)")
         int port = 9042;
 
+        @Option(name = {"--ssl"}, description = "Enable client encryption, (also requires you set JSSE properties appropriately, see: http://docs.oracle.com/javase/6/docs/technotes/guides/security/jsse/JSSERefGuide.html#Customization)")
+        boolean ssl = false;
+
+        @Option(name = {"--cqlshrc"}, description = "Parse authentication credentials from a cqlshrc file")
+        String cqlshrc;
+
         @Inject
         HelpOption<Cmd> help;
 
         String contact() {
             return String.format(this.host, this.port);
+        }
+
+        CassandraSession.Builder sessionBuilder() {
+            CassandraSession.Builder builder = CassandraSession.builder().addContactPoints(this.contact())
+                    .withSSL(this.ssl);
+
+            if (this.cqlshrc != null) {
+                try {
+                    Ini rc = new Ini(new File(this.cqlshrc));
+                    String username = checkNotNull(rc.get("authentication", "username"));
+                    String password = checkNotNull(rc.get("authentication", "password"));
+                    builder.withCredentials(username, password);
+                }
+                catch (Exception e) {
+                    throw Throwables.propagate(e);
+                }
+            }
+
+            return builder;
         }
     }
 
@@ -67,7 +95,7 @@ public class Main {
                 return;
             }
 
-            try (CassandraSession session = new CassandraSession(this.contact())) {
+            try (CassandraSession session = this.sessionBuilder().build()) {
                 new Writer(
                         metrics,
                         session,
@@ -110,7 +138,7 @@ public class Main {
                 return;
             }
 
-            try (CassandraSession session = new CassandraSession(this.contact())) {
+            try (CassandraSession session = this.sessionBuilder().build()) {
                 new AltWriter(
                         metrics,
                         session,
@@ -145,7 +173,7 @@ public class Main {
                 return;
             }
 
-            try (CassandraSession session = new CassandraSession(this.contact())) {
+            try (CassandraSession session = this.sessionBuilder().build()) {
                 new Reader(
                         metrics,
                         session,
@@ -177,7 +205,7 @@ public class Main {
                 return;
             }
 
-            try (CassandraSession session = new CassandraSession(this.contact())) {
+            try (CassandraSession session = this.sessionBuilder().build()) {
                 new AltReader(metrics, session, this.concurrency, this.numPartitions, this.partOffset, this.runs)
                         .execute();
             }

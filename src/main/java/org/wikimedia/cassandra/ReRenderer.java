@@ -53,7 +53,7 @@ public class ReRenderer {
         int rev = Integer.MAX_VALUE;
         byte[] value = Util.randomBytes(this.valueSizeMB * 1024 * 1024);
 
-        try (CassandraSession session = new CassandraSession(this.cassandraContact)) {
+        try (CassandraSession session = CassandraSession.builder().addContactPoints(this.cassandraContact).build()) {
             PreparedStatement insertStatement = session.prepare(INSERT);
             PreparedStatement selectStatement = session.prepare(SELECT);
             PreparedStatement updateStatement = session.prepare(UPDATE);

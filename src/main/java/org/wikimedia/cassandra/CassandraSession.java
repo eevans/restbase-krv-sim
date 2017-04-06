@@ -14,8 +14,8 @@ public class CassandraSession implements AutoCloseable {
 
     private Session session;
 
-    public CassandraSession(String...contacts) {
-        this.cluster = Cluster.builder().addContactPoints(contacts).build();
+    private CassandraSession(Cluster cluster) {
+        this.cluster = cluster;
         this.session = this.cluster.connect();
     }
 
@@ -30,6 +30,39 @@ public class CassandraSession implements AutoCloseable {
     @Override
     public void close() throws Exception {
         cluster.close();
+    }
+
+    public static class Builder {
+        private final Cluster.Builder builder;
+
+        public Builder() {
+            this.builder = Cluster.builder();
+        }
+
+        public Builder addContactPoints(String... contacts) {
+            this.builder.addContactPoints(contacts);
+            return this;
+        }
+
+        public Builder withSSL(boolean ssl) {
+            if (ssl) {
+                this.builder.withSSL();
+            }
+            return this;
+        }
+
+        public Builder withCredentials(String username, String password) {
+            this.builder.withCredentials(username, password);
+            return this;
+        }
+
+        public CassandraSession build() {
+            return new CassandraSession(this.builder.build());
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
 }
