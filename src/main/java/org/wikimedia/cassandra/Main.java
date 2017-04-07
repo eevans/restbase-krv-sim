@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
 import org.ini4j.Ini;
+import org.ini4j.Profile.Section;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
@@ -57,8 +58,9 @@ public class Main {
             if (this.cqlshrc != null) {
                 try {
                     Ini rc = new Ini(new File(this.cqlshrc));
-                    String username = checkNotNull(rc.get("authentication", "username"));
-                    String password = checkNotNull(rc.get("authentication", "password"));
+                    Section creds = checkNotNull(rc.get("authentication"), "cqlshrc file missing authentication section");
+                    String username = checkNotNull(creds.get("username"), "unable to parse username from cqlshrc file");
+                    String password = checkNotNull(creds.get("password"), "unable to parse password from cqlshrc file");
                     builder.withCredentials(username, password);
                 }
                 catch (Exception e) {
