@@ -29,7 +29,7 @@ public class CassandraSession implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        cluster.close();
+        this.cluster.close();
     }
 
     public static class Builder {

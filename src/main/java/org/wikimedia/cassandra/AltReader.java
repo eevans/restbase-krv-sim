@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
@@ -18,7 +19,7 @@ import com.github.rvesse.airline.annotations.Command;
 
 @Command(name = "alt-read", description = "Read data")
 public class AltReader extends Reader {
-
+    private static final ConsistencyLevel CL = ConsistencyLevel.LOCAL_QUORUM;
     private static final String QUERY = String
             .format("SELECT value FROM %s.%s WHERE key=?", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(AltReader.class);
@@ -43,7 +44,7 @@ public class AltReader extends Reader {
                 executor.submit(() -> {
                     Statement statement = null;
                     try {
-                        statement = prepared.bind(key);
+                        statement = prepared.bind(key).setConsistencyLevel(CL);
                         this.session.execute(statement);
                     }
                     catch (NoHostAvailableException | QueryExecutionException e) {

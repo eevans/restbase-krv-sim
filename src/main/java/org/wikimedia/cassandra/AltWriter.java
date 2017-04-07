@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
@@ -22,6 +23,7 @@ import com.github.rvesse.airline.annotations.Command;
 public class AltWriter extends Writer {
     static final String TABLE = "alt_data";
 
+    private static final ConsistencyLevel CL = ConsistencyLevel.LOCAL_QUORUM;
     private static final String QUERY = String
             .format("INSERT INTO %s.%s (key,value) VALUES (?,?) USING TIMESTAMP 1", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(AltWriter.class);
@@ -51,7 +53,7 @@ public class AltWriter extends Writer {
                         executor.submit(() -> {
                             Statement statement = null;
                             try {
-                                statement = prepared.bind(key, valueFor(rev));
+                                statement = prepared.bind(key, valueFor(rev)).setConsistencyLevel(CL);
                                 this.session.execute(statement);
                                 this.attempts.mark();
                             }
