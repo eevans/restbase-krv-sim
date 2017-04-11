@@ -6,6 +6,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -14,6 +15,7 @@ import javax.inject.Inject;
 import org.ini4j.Ini;
 import org.ini4j.Profile.Section;
 import org.slf4j.LoggerFactory;
+import org.wikimedia.cassandra.Util.AltValue;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Slf4jReporter;
@@ -25,10 +27,14 @@ import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.model.GlobalMetadata;
 import com.google.common.base.Throwables;
 
-@Cli(
-        name = "krv-simulator",
-        defaultCommand = Main.Help.class,
-        commands = { Main.Write.class, Main.AltWrite.class, Main.Read.class, Main.AltRead.class, Main.Schema.class, Main.Help.class })
+@Cli(name = "krv-simulator", defaultCommand = Main.Help.class, commands = {
+        Main.Write.class,
+        Main.AltWrite.class,
+        Main.Read.class,
+        Main.AltRead.class,
+        Main.Schema.class,
+        Main.GetAltValue.class,
+        Main.Help.class })
 public class Main {
 
     abstract static class Cmd implements Runnable {
@@ -230,7 +236,35 @@ public class Main {
             }
         }
     }
-    
+
+    @Command(name = "get-alt-value", description = "Retrieve a value associated with a key")
+    public static class GetAltValue extends Cmd {
+        @Option(name = { "-k", "--key" }, description = "Key to retrieve")
+        private String key;
+
+        @Override
+        public void run() {
+            if (this.help.showHelpIfRequested()) {
+                return;
+            }
+
+            try (CassandraSession session = this.sessionBuilder().build()) {
+                AltValue v = new org.wikimedia.cassandra.GetAltValue(session).get(this.key);
+                if (v != null) {
+                    System.out.printf("revision=%d, timestamp=%s%n", v.getRevision(), new Date(v.getUnixTimestamp()));
+                }
+                else {
+                    System.err.printf("value for %s not found%n", this.key);
+                }
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+
+        }
+
+    }
+
     @Command(name = "help")
     public static class Help implements Runnable {
         @Inject
