@@ -47,13 +47,14 @@ public class AltWriter extends Writer {
         for (int run = 0; run < this.numRuns; run++) {
             for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
                 for (int j = 0; j < this.numRenders; j++) {
+                    UUID tid = UUIDs.timeBased();
                     for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
                         final String key = keyName(k);
                         final int rev = i;
                         executor.submit(() -> {
                             Statement statement = null;
                             try {
-                                statement = prepared.bind(key, valueFor(rev)).setConsistencyLevel(CL);
+                                statement = prepared.bind(key, valueFor(rev, tid)).setConsistencyLevel(CL);
                                 this.session.execute(statement);
                                 this.attempts.mark();
                             }
@@ -85,19 +86,24 @@ public class AltWriter extends Writer {
         }
     }
 
-    ByteBuffer valueFor(int rev) {
-        return valueFor(rev, this.value.duplicate());
+    ByteBuffer valueFor(int rev, UUID tid) {
+        return valueFor(rev, tid, this.value.duplicate());
     }
 
     static ByteBuffer valueFor(int rev, ByteBuffer value) {
         UUID uid = UUIDs.timeBased();
+        return valueFor(rev, uid, value);
+    }
+
+    static ByteBuffer valueFor(int rev, UUID tid, ByteBuffer value) {
         ByteBuffer res = ByteBuffer.allocate(value.remaining() + 16 + 4);
         res.putInt(rev);
-        res.putLong(uid.getMostSignificantBits());
-        res.putLong(uid.getLeastSignificantBits());
+        res.putLong(tid.getMostSignificantBits());
+        res.putLong(tid.getLeastSignificantBits());
         res.put(value);
         value.flip();
         res.flip();
         return res;
     }
+
 }
