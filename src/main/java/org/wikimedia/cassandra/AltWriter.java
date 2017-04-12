@@ -4,6 +4,7 @@ import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -91,8 +92,7 @@ public class AltWriter extends Writer {
     }
 
     static ByteBuffer valueFor(int rev, ByteBuffer value) {
-        UUID uid = UUIDs.timeBased();
-        return valueFor(rev, uid, value);
+        return valueFor(rev, UUIDs.timeBased(), value);
     }
 
     static ByteBuffer valueFor(int rev, UUID tid, ByteBuffer value) {
