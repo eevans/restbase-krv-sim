@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Statement;
@@ -29,8 +30,9 @@ import com.github.rvesse.airline.annotations.Command;
 @Command(name = "write", description = "Write data")
 public class Writer {
     private static final ConsistencyLevel CL = ConsistencyLevel.LOCAL_QUORUM;
-    private static final String QUERY = String
+    private static final String INSERT = String
             .format("INSERT INTO %s.%s (key,rev,tid,value) VALUES (?,?,now(),?)", KEYSPACE, TABLE);
+    private static final String DELETE = String.format("DELETE FROM %s.%s WHERE key = ? and rev < ?", KEYSPACE, TABLE);
     private static final Logger LOG = LoggerFactory.getLogger(Writer.class);
 
     protected final CassandraSession session;
@@ -100,7 +102,8 @@ public class Writer {
     }
 
     public void execute() {
-        PreparedStatement prepared = this.session.prepare(QUERY);
+        PreparedStatement insert = this.session.prepare(INSERT);
+        PreparedStatement delete = this.session.prepare(DELETE);
 
         for (int run = 0; run < this.numRuns; run++) {
             for (int i = this.revisionStart; i < (this.numRevisions + this.revisionStart); i++) {
@@ -111,7 +114,16 @@ public class Writer {
                         executor.submit(() -> {
                             Statement statement = null;
                             try {
-                                statement = prepared.bind(key, rev, value).setConsistencyLevel(CL);
+                                // FIXME: Do not hard-code the probability.
+                                if (Math.random() <= 0.10d) {
+                                    statement = new BatchStatement()
+                                            .add(insert.bind(key, rev, value))
+                                            .add(delete.bind(key, rev))
+                                            .setConsistencyLevel(CL);
+                                }
+                                else {
+                                    statement = insert.bind(key, rev, value).setConsistencyLevel(CL);
+                                }
                                 this.session.execute(statement);
                                 this.attempts.mark();
                             }

@@ -4,7 +4,6 @@ import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.Date;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
