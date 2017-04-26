@@ -111,12 +111,12 @@ public class Writer {
                     for (int k = this.partitionStart; k < (this.numPartitions + this.partitionStart); k++) {
                         final String key = keyName(k);
                         final int rev = i;
-                        final int render = k;
+                        final int render = j;
                         executor.submit(() -> {
                             Statement statement = null;
                             try {
                                 // FIXME: Do not hard-code the probability.
-                                if (render == this.partitionStart && Math.random() <= 0.10d) {
+                                if (render == 0 && Math.random() <= 0.10d) {
                                     statement = new BatchStatement()
                                             .add(insert.bind(key, rev, value))
                                             .add(delete.bind(key, rev))
