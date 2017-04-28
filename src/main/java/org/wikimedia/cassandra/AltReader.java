@@ -3,6 +3,7 @@ package org.wikimedia.cassandra;
 import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
 import static org.wikimedia.cassandra.AltWriter.TABLE;
 
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -11,7 +12,10 @@ import org.slf4j.LoggerFactory;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.Host;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
@@ -30,8 +34,9 @@ public class AltReader extends Reader {
             int concurrency,
             int numPartitions,
             int partOffset,
-            int numRuns) {
-        super(metrics, session, concurrency, numPartitions, partOffset, numRuns);
+            int numRuns,
+            double traceProbability) {
+        super(metrics, session, concurrency, numPartitions, partOffset, numRuns, traceProbability);
     }
 
     public void execute() {
@@ -45,7 +50,17 @@ public class AltReader extends Reader {
                     Statement statement = null;
                     try {
                         statement = prepared.bind(key).setConsistencyLevel(CL);
-                        this.session.execute(statement);
+                        boolean execTrace = Math.random() <= this.traceProbability;
+                        if (execTrace) {
+                            statement.enableTracing();
+                        }
+                        ResultSet result = this.session.execute(statement);
+                        if (execTrace) {
+                            ExecutionInfo info = result.getExecutionInfo();
+                            Host coordinator = info.getQueriedHost();
+                            UUID traceId = info.getQueryTrace().getTraceId();
+                            LOG.info("Query trace: coordinatorNode={}, traceID={}", coordinator, traceId);
+                        }
                     }
                     catch (NoHostAvailableException | QueryExecutionException e) {
                         LOG.warn(e.getMessage());

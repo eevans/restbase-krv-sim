@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.wikimedia.cassandra.CassandraSession.KEYSPACE;
 import static org.wikimedia.cassandra.CassandraSession.TABLE;
 
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -19,7 +20,10 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.ExecutionInfo;
+import com.datastax.driver.core.Host;
 import com.datastax.driver.core.PreparedStatement;
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
@@ -36,6 +40,7 @@ public class Reader {
     protected final int numPartitions;
     protected final int partitionStart;
     protected final int numRuns;
+    protected final double traceProbability;
     protected final int queueSize;
     protected final ExecutorService executor;
     protected final Meter failures;
@@ -49,12 +54,16 @@ public class Reader {
             int concurrency,
             int numPartitions,
             int partOffset,
-            int numRuns) {
+            int numRuns,
+            double traceProbability) {
         this.concurrency = concurrency;
         this.session = checkNotNull(session);
         this.numPartitions = numPartitions;
         this.partitionStart = partOffset;
         this.numRuns = numRuns;
+        this.traceProbability = traceProbability;
+
+        LOG.info("Logging query traces with probability of: {}", this.traceProbability);
 
         this.queueSize = this.concurrency * 2;
         this.failures = metrics.meter(name(Reader.class, "failed"));
@@ -96,7 +105,17 @@ public class Reader {
                     Statement statement = null;
                     try {
                         statement = prepared.bind(key).setConsistencyLevel(CL);
-                        this.session.execute(statement);
+                        boolean execTrace = Math.random() <= this.traceProbability;
+                        if (execTrace) {
+                            statement.enableTracing();
+                        }
+                        ResultSet result = this.session.execute(statement);
+                        if (execTrace) {
+                            ExecutionInfo info = result.getExecutionInfo();
+                            Host coordinator = info.getQueriedHost();
+                            UUID traceId = info.getQueryTrace().getTraceId();
+                            LOG.info("Query trace: coordinatorNode={}, traceID={}", coordinator, traceId);
+                        }
                     }
                     catch (NoHostAvailableException | QueryExecutionException e) {
                         LOG.warn(e.getMessage());

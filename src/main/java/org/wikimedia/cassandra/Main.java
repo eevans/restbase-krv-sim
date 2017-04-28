@@ -24,6 +24,7 @@ import com.github.rvesse.airline.annotations.Arguments;
 import com.github.rvesse.airline.annotations.Cli;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
+import com.github.rvesse.airline.annotations.restrictions.ranges.DoubleRange;
 import com.github.rvesse.airline.model.GlobalMetadata;
 import com.google.common.base.Throwables;
 
@@ -167,13 +168,16 @@ public class Main {
     @Command(name = "read", description = "Read previously written revisions")
     public static class Read extends Cmd {
         @Option(name = { "-np", "--num-partitions" }, description = "Number of partitions to read (default: 1000)")
-        private int numPartitions = 1000;
+        protected int numPartitions = 1000;
         @Option(name = { "-po", "--partition-offset" }, description = "Partition offset to start from (default: 0)")
-        private int partOffset = 0;
+        protected int partOffset = 0;
         @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
-        private int concurrency = 10;
+        protected int concurrency = 10;
         @Option(name = "--runs", description = "Number of runs to execute")
-        private int runs = 1;
+        protected int runs = 1;
+        @DoubleRange(min = 0.0d, max = 1.0d)
+        @Option(name = "--trace-probability", title = "probability", description = "Trace probability (0.0-1.0, default: 0.0)")
+        protected double traceProbability = 0.0d;
 
         @Override
         public void run() {
@@ -188,7 +192,8 @@ public class Main {
                         this.concurrency,
                         this.numPartitions,
                         this.partOffset,
-                        this.runs).execute();
+                        this.runs,
+                        this.traceProbability).execute();
             }
             catch (Exception e) {
                 throw Throwables.propagate(e);
@@ -197,16 +202,7 @@ public class Main {
     }
 
     @Command(name = "alt-read", description = "Read previously written revisions")
-    public static class AltRead extends Cmd {
-        @Option(name = { "-np", "--num-partitions" }, description = "Number of partitions to read (default: 1000)")
-        private int numPartitions = 1000;
-        @Option(name = { "-po", "--partition-offset" }, description = "Partition offset to start from (default: 0)")
-        private int partOffset = 0;
-        @Option(name = "--concurrency", description = "Request concurrency (default: 10)")
-        private int concurrency = 10;
-        @Option(name = "--runs", description = "Number of runs to execute")
-        private int runs = 1;
-
+    public static class AltRead extends Read {
         @Override
         public void run() {
             if (this.help.showHelpIfRequested()) {
@@ -214,8 +210,14 @@ public class Main {
             }
 
             try (CassandraSession session = this.sessionBuilder().build()) {
-                new AltReader(metrics, session, this.concurrency, this.numPartitions, this.partOffset, this.runs)
-                        .execute();
+                new AltReader(
+                        metrics,
+                        session,
+                        this.concurrency,
+                        this.numPartitions,
+                        this.partOffset,
+                        this.runs,
+                        this.traceProbability).execute();
             }
             catch (Exception e) {
                 throw Throwables.propagate(e);
